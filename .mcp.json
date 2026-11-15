@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "Roblox_Studio": {
+      "type": "stdio",
+      "command": "/Applications/RobloxStudio.app/Contents/MacOS/StudioMCP",
+      "args": [],
+      "env": {}
+    },
+    "varco-3d": {
+      "type": "http",
+      "url": "https://3d.varco.ai/api/mcp"
+    }
+  }
+}
