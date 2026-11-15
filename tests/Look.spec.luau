@@ -69,6 +69,7 @@ return function(): string
 	local highlight = workspace:FindFirstChildWhichIsA("Highlight", true)
 	check("no Highlight outline in workspace", highlight == nil, highlight and highlight:GetFullName())
 
+	local textures = {}
 	for _, car in cars do
 		local textured = nil
 		for _, part in car:GetDescendants() do
@@ -78,7 +79,9 @@ return function(): string
 			end
 		end
 		check(car.Name .. " car shows an opaque textured MeshPart", textured ~= nil)
+		textures[car.Name] = if textured then textured.TextureID else nil
 	end
+	check("player and ai cars show different textures", textures.player ~= nil and textures.ai ~= nil and textures.player ~= textures.ai, tostring(textures.player) .. " vs " .. tostring(textures.ai))
 
 	table.insert(lines, 1, string.format("%d checks, %d failed", #lines, failed))
 	return table.concat(lines, "\n")
