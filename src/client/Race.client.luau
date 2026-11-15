@@ -33,6 +33,7 @@ type Car = {
 	name: string,
 	drive: (CarPhysics.CarState, Track.Track) -> CarPhysics.Input,
 	state: CarPhysics.CarState,
+	previous: CarPhysics.CarState,
 	model: Model,
 	pivotHeight: number,
 	bobPhase: number,
@@ -64,15 +65,17 @@ local function spawnCar(name: string, lateral: number, drive): Car
 	model.Parent = workspace
 
 	local start, tangent = Track.sample(track, -START_BEHIND)
+	local state = {
+		position = start + tangent:Cross(Vector3.yAxis) * lateral,
+		heading = math.atan2(tangent.X, tangent.Z),
+		speed = 0,
+		distance = -START_BEHIND,
+	}
 	return {
 		name = name,
 		drive = drive,
-		state = {
-			position = start + tangent:Cross(Vector3.yAxis) * lateral,
-			heading = math.atan2(tangent.X, tangent.Z),
-			speed = 0,
-			distance = -START_BEHIND,
-		},
+		state = state,
+		previous = state,
 		model = model,
 		pivotHeight = model:GetPivot().Y - (boxCFrame.Y - boxSize.Y / 2),
 		bobPhase = lateral,
@@ -112,6 +115,7 @@ end
 
 local function updateCar(car: Car)
 	local input = if car.place then IDLE else car.drive(car.state, track)
+	car.previous = car.state
 	car.state = CarPhysics.step(car.state, input, SIM_STEP, track)
 	if car.place then
 		return
@@ -179,9 +183,15 @@ local bigLabel = makeLabel(hud, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.28
 
 local camera = workspace.CurrentCamera
 
+local function renderPose(car: Car): (Vector3, number)
+	local alpha = race.unsimulated / SIM_STEP
+	local from, to = car.previous, car.state
+	return from.position:Lerp(to.position, alpha), from.heading + (to.heading - from.heading) * alpha
+end
+
 local function cameraGoal(car: Car): CFrame
-	local forward = CarPhysics.forward(car.state.heading)
-	local position = car.state.position
+	local position, heading = renderPose(car)
+	local forward = CarPhysics.forward(heading)
 	return CFrame.lookAt(position - forward * CAMERA_BACK + Vector3.yAxis * CAMERA_UP, position + forward * CAMERA_LOOK_AHEAD)
 end
 
@@ -205,9 +215,9 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 
 	for _, car in cars do
-		local state = car.state
+		local position, heading = renderPose(car)
 		local lift = car.pivotHeight + HOVER + math.sin(now * BOB_SPEED + car.bobPhase) * BOB_HEIGHT
-		car.model:PivotTo(CFrame.lookAt(state.position, state.position + CarPhysics.forward(state.heading)) + Vector3.yAxis * lift)
+		car.model:PivotTo(CFrame.lookAt(position, position + CarPhysics.forward(heading)) + Vector3.yAxis * lift)
 	end
 	-- Spawning the avatar resets CameraType to Custom, and the default camera then fights this one.
 	camera.CameraType = Enum.CameraType.Scriptable
