@@ -23,8 +23,6 @@ local CAMERA_BACK = 28
 local CAMERA_UP = 12
 local CAMERA_LOOK_AHEAD = 25
 local CAMERA_SMOOTHING = 6
-local PLAYER_COLOR = Color3.fromRGB(0, 230, 255)
-local AI_COLOR = Color3.fromRGB(255, 140, 0)
 local PLACE_NAMES = { "1st", "2nd" }
 local IDLE: CarPhysics.Input = { throttle = 0, steer = 0 }
 
@@ -58,14 +56,9 @@ local function keyboardInput(): CarPhysics.Input
 	}
 end
 
-local function spawnCar(name: string, color: Color3, lateral: number, drive): Car
+local function spawnCar(name: string, lateral: number, drive): Car
 	local model = carTemplate:Clone()
 	model.Name = name
-	for _, part in model:GetDescendants() do
-		if part:IsA("BasePart") then
-			part.Color = color
-		end
-	end
 	local boxCFrame, boxSize = model:GetBoundingBox()
 	model.Parent = workspace
 
@@ -88,8 +81,8 @@ local function spawnCar(name: string, color: Color3, lateral: number, drive): Ca
 	}
 end
 
-local player = spawnCar("player", PLAYER_COLOR, -GRID_OFFSET, keyboardInput)
-local ai = spawnCar("ai", AI_COLOR, GRID_OFFSET, AiDriver.input)
+local player = spawnCar("player", -GRID_OFFSET, keyboardInput)
+local ai = spawnCar("ai", GRID_OFFSET, AiDriver.input)
 local cars = { player, ai }
 
 local function seatAvatar(character: Model)

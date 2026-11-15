@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Track = require(ReplicatedStorage.Shared.Track)
 
-local ROAD_COLOR = Color3.fromRGB(190, 175, 250)
+local ROAD_COLOR = Color3.fromRGB(85, 70, 140)
 local ROAD_THICKNESS = 1
 local ROAD_OVERLAP = 4
 local SKY_COLOR = Color3.fromRGB(20, 24, 70)
@@ -36,13 +36,13 @@ end
 
 local function setupLighting()
 	Lighting:ClearAllChildren()
-	Lighting.ClockTime = 0
-	Lighting.Brightness = 0
-	Lighting.GlobalShadows = false
-	Lighting.Ambient = Color3.new(1, 1, 1)
-	Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-	Lighting.EnvironmentDiffuseScale = 0
-	Lighting.EnvironmentSpecularScale = 0
+	Lighting.ClockTime = 14
+	Lighting.Brightness = 3
+	Lighting.GlobalShadows = true
+	Lighting.Ambient = Color3.fromRGB(70, 70, 90)
+	Lighting.OutdoorAmbient = Color3.fromRGB(110, 110, 130)
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 1
 
 	local sky = Instance.new("Sky")
 	sky.StarCount = 0
