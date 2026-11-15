@@ -63,7 +63,7 @@ return function(): string
 		check(rider.name .. " plays only the sit pose", sitting, #tracks .. " tracks")
 
 		local boxCFrame, boxSize = rider.car:GetBoundingBox()
-		local roof = rider.car:GetPivot():PointToObjectSpace(boxCFrame.Position + Vector3.yAxis * boxSize.Y / 2).Y
+		local roof = rider.car:GetPivot():PointToObjectSpace(boxCFrame * Vector3.new(0, boxSize.Y / 2, 0)).Y
 		local hips = inCar(rider, root)
 		local head = inCar(rider, rider.model.Head)
 		check(rider.name .. " sits over the car centre", math.abs(hips.X) < 3 and math.abs(hips.Z) < 3, hips)

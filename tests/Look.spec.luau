@@ -6,14 +6,46 @@ local Courses = require(ReplicatedStorage.Shared.Courses)
 
 local MIN_STARS = 3000
 local ROAD_PROBE_EVERY = 10
-local ROAD_REACH = 2
-local GRID = 8
+local ROAD_REACH = 1
+local GRID = 16
 local MAX_PARTS = 8000
 
 local function insideBox(part: BasePart, point: Vector3, margin: number): boolean
 	local offset = part.CFrame:PointToObjectSpace(point)
 	local half = part.Size / 2 + Vector3.one * margin
 	return math.abs(offset.X) <= half.X and math.abs(offset.Y) <= half.Y and math.abs(offset.Z) <= half.Z
+end
+
+local function nearestOnTriangle(p: Vector3, a: Vector3, b: Vector3, c: Vector3): Vector3
+	local ab, ac, ap = b - a, c - a, p - a
+	local d1, d2 = ab:Dot(ap), ac:Dot(ap)
+	if d1 <= 0 and d2 <= 0 then
+		return a
+	end
+	local bp = p - b
+	local d3, d4 = ab:Dot(bp), ac:Dot(bp)
+	if d3 >= 0 and d4 <= d3 then
+		return b
+	end
+	local vc = d1 * d4 - d3 * d2
+	if vc <= 0 and d1 >= 0 and d3 <= 0 then
+		return a + ab * (d1 / (d1 - d3))
+	end
+	local cp = p - c
+	local d5, d6 = ab:Dot(cp), ac:Dot(cp)
+	if d6 >= 0 and d5 <= d6 then
+		return c
+	end
+	local vb = d5 * d2 - d1 * d6
+	if vb <= 0 and d2 >= 0 and d6 <= 0 then
+		return a + ac * (d2 / (d2 - d6))
+	end
+	local va = d3 * d6 - d5 * d4
+	if va <= 0 and d4 - d3 >= 0 and d5 - d6 >= 0 then
+		return b + (c - b) * ((d4 - d3) / ((d4 - d3) + (d5 - d6)))
+	end
+	local denom = 1 / (va + vb + vc)
+	return a + ab * (vb * denom) + ac * (vc * denom)
 end
 
 return function(): string
@@ -74,7 +106,7 @@ return function(): string
 	local function cell(point: Vector3): string
 		return string.format("%d,%d,%d", point.X // GRID, point.Y // GRID, point.Z // GRID)
 	end
-	local blocks, vertices = {}, {}
+	local blocks, triangles = {}, {}
 	local neon = 0
 	for _, part in world.Road:GetDescendants() do
 		if part:IsA("BasePart") then
@@ -83,11 +115,14 @@ return function(): string
 			end
 			local mesh = if part:IsA("MeshPart") then part.MeshContent.Object else nil
 			if mesh and mesh:IsA("EditableMesh") then
-				for _, vertex in mesh:GetVertices() do
-					local point = part.CFrame * mesh:GetPosition(vertex)
-					local key = cell(point)
-					vertices[key] = vertices[key] or {}
-					table.insert(vertices[key], point)
+				for _, face in mesh:GetFaces() do
+					local corners = {}
+					for k, vertex in mesh:GetFaceVertices(face) do
+						corners[k] = part.CFrame * mesh:GetPosition(vertex)
+					end
+					local key = cell((corners[1] + corners[2] + corners[3]) / 3)
+					triangles[key] = triangles[key] or {}
+					table.insert(triangles[key], corners)
 				end
 			else
 				table.insert(blocks, part)
@@ -105,8 +140,8 @@ return function(): string
 		for dx = -1, 1 do
 			for dy = -1, 1 do
 				for dz = -1, 1 do
-					for _, vertex in vertices[cell(point + Vector3.new(dx, dy, dz) * GRID)] or {} do
-						if (vertex - point).Magnitude <= ROAD_REACH then
+					for _, corners in triangles[cell(point + Vector3.new(dx, dy, dz) * GRID)] or {} do
+						if (nearestOnTriangle(point, corners[1], corners[2], corners[3]) - point).Magnitude <= ROAD_REACH then
 							return true
 						end
 					end
