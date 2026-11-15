@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Track = require(Shared.Track)
 local CarPhysics = require(Shared.CarPhysics)
 local AiDriver = require(Shared.AiDriver)
+local FrameClock = require(Shared.FrameClock)
 local World = require(script.Parent.World)
 local Rider = require(script.Parent.Rider)
 
@@ -33,6 +34,7 @@ type Car = {
 	name: string,
 	drive: (CarPhysics.CarState, Track.Track) -> CarPhysics.Input,
 	state: CarPhysics.CarState,
+	previous: CarPhysics.CarState,
 	model: Model,
 	pivotHeight: number,
 	bobPhase: number,
@@ -64,15 +66,17 @@ local function spawnCar(name: string, lateral: number, drive): Car
 	model.Parent = workspace
 
 	local start, tangent = Track.sample(track, -START_BEHIND)
+	local state = {
+		position = start + tangent:Cross(Vector3.yAxis) * lateral,
+		heading = math.atan2(tangent.X, tangent.Z),
+		speed = 0,
+		distance = -START_BEHIND,
+	}
 	return {
 		name = name,
 		drive = drive,
-		state = {
-			position = start + tangent:Cross(Vector3.yAxis) * lateral,
-			heading = math.atan2(tangent.X, tangent.Z),
-			speed = 0,
-			distance = -START_BEHIND,
-		},
+		state = state,
+		previous = state,
 		model = model,
 		pivotHeight = model:GetPivot().Y - (boxCFrame.Y - boxSize.Y / 2),
 		bobPhase = lateral,
@@ -102,7 +106,8 @@ task.spawn(function()
 	Rider.seat(aiRider, ai.model)
 end)
 
-local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0, unsimulated = 0 }
+local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0 }
+local frameClock = FrameClock.new(SIM_STEP)
 
 local function setPhase(phase: Phase)
 	race.phase = phase
@@ -112,6 +117,7 @@ end
 
 local function updateCar(car: Car)
 	local input = if car.place then IDLE else car.drive(car.state, track)
+	car.previous = car.state
 	car.state = CarPhysics.step(car.state, input, SIM_STEP, track)
 	if car.place then
 		return
@@ -178,11 +184,14 @@ local placeLabel = makeLabel(hud, Vector2.new(1, 0), UDim2.new(1, -24, 0, 16), U
 local bigLabel = makeLabel(hud, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.28), UDim2.fromScale(0.5, 0.25))
 
 local camera = workspace.CurrentCamera
-camera.CameraType = Enum.CameraType.Scriptable
+
+local function renderPose(car: Car): (Vector3, number)
+	return CarPhysics.pose(car.previous, car.state, FrameClock.alpha(frameClock))
+end
 
 local function cameraGoal(car: Car): CFrame
-	local forward = CarPhysics.forward(car.state.heading)
-	local position = car.state.position
+	local position, heading = renderPose(car)
+	local forward = CarPhysics.forward(heading)
 	return CFrame.lookAt(position - forward * CAMERA_BACK + Vector3.yAxis * CAMERA_UP, position + forward * CAMERA_LOOK_AHEAD)
 end
 
@@ -195,9 +204,7 @@ RunService.RenderStepped:Connect(function(dt)
 		setPhase("Racing")
 	end
 	if race.phase ~= "Countdown" then
-		race.unsimulated += dt
-		while race.unsimulated >= SIM_STEP do
-			race.unsimulated -= SIM_STEP
+		for _ = 1, FrameClock.advance(frameClock, dt) do
 			race.clock += SIM_STEP
 			for _, car in cars do
 				updateCar(car)
@@ -206,10 +213,12 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 
 	for _, car in cars do
-		local state = car.state
+		local position, heading = renderPose(car)
 		local lift = car.pivotHeight + HOVER + math.sin(now * BOB_SPEED + car.bobPhase) * BOB_HEIGHT
-		car.model:PivotTo(CFrame.lookAt(state.position, state.position + CarPhysics.forward(state.heading)) + Vector3.yAxis * lift)
+		car.model:PivotTo(CFrame.lookAt(position, position + CarPhysics.forward(heading)) + Vector3.yAxis * lift)
 	end
+	-- Spawning the avatar resets CameraType to Custom, and the default camera then fights this one.
+	camera.CameraType = Enum.CameraType.Scriptable
 	camera.CFrame = camera.CFrame:Lerp(cameraGoal(player), 1 - math.exp(-CAMERA_SMOOTHING * dt))
 
 	local text = bigText(now)
