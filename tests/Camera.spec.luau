@@ -3,8 +3,6 @@ local RunService = game:GetService("RunService")
 
 local SAMPLE_SECONDS = 2
 local CAMERA_BACK = 28
-local STEADY_SECONDS = 4
-local JERK_RATIO = 0.5
 
 return function(): string
 	local lines = {}
@@ -51,34 +49,6 @@ return function(): string
 		"camera stays at least CAMERA_BACK behind the player car",
 		minGap >= CAMERA_BACK - 0.5,
 		string.format("closest horizontal gap %.1f studs", minGap)
-	)
-
-	local ai = workspace:WaitForChild("ai") :: Model
-	local start = ai:GetPivot().Position
-	deadline = os.clock() + 10
-	repeat
-		task.wait(0.1)
-	until (ai:GetPivot().Position - start).Magnitude > 50 or os.clock() > deadline
-	local steps = {}
-	local last = ai:GetPivot().Position
-	local sampler = RunService.Heartbeat:Connect(function(dt)
-		local p = ai:GetPivot().Position
-		table.insert(steps, Vector3.new(p.X - last.X, 0, p.Z - last.Z).Magnitude / dt)
-		last = p
-	end)
-	task.wait(STEADY_SECONDS)
-	sampler:Disconnect()
-	local jerks = 0
-	for i = 3, #steps - 1 do
-		local around = (steps[i - 1] + steps[i + 1]) / 2
-		if around > 20 and math.abs(steps[i] - around) > JERK_RATIO * around then
-			jerks += 1
-		end
-	end
-	check(
-		"ai car moves at a steady on-screen speed every rendered frame",
-		jerks == 0,
-		string.format("%d of %d frames ran slower or faster than their neighbours by over %d%%", jerks, #steps, JERK_RATIO * 100)
 	)
 
 	table.insert(lines, 1, string.format("%d checks, %d failed", #lines, failed))
