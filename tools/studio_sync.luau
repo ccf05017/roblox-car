@@ -18,17 +18,34 @@ end
 
 local log = {}
 
-local function listFiles(path: string): { string }
-	local files = {}
-	for file in string.gmatch(Http:GetAsync(PYTHON_HTTP_SERVER .. path .. "/"), 'href="([^"/]+)"') do
+local function listEntries(path: string): ({ string }, { string })
+	local listing = Http:GetAsync(PYTHON_HTTP_SERVER .. path .. "/")
+	local files, folders = {}, {}
+	for file in string.gmatch(listing, 'href="([^"/]+)"') do
 		table.insert(files, file)
 	end
-	return files
+	for folder in string.gmatch(listing, 'href="([^"/]+)/"') do
+		table.insert(folders, folder)
+	end
+	return files, folders
 end
 
 local function syncFolder(target: Instance, path: string)
 	local wanted = {}
-	for _, file in listFiles(path) do
+	local files, folders = listEntries(path)
+	for _, name in folders do
+		wanted[name] = true
+		local existing = target:FindFirstChild(name)
+		if existing and not existing:IsA("Folder") then
+			existing:Destroy()
+			existing = nil
+		end
+		local folder = existing or Instance.new("Folder")
+		folder.Name = name
+		folder.Parent = target
+		syncFolder(folder, path .. "/" .. name)
+	end
+	for _, file in files do
 		local name, class = classify(file)
 		if name then
 			wanted[name] = true
@@ -45,7 +62,7 @@ local function syncFolder(target: Instance, path: string)
 		end
 	end
 	for _, child in target:GetChildren() do
-		if child:IsA("LuaSourceContainer") and not wanted[child.Name] then
+		if (child:IsA("LuaSourceContainer") or child:IsA("Folder")) and not wanted[child.Name] then
 			table.insert(log, "remove " .. child:GetFullName())
 			child:Destroy()
 		end

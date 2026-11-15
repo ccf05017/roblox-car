@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 
 local SIT_ANIMATION = "2506281703"
+local SEAT_REACH = 6
 
 return function(): string
 	local lines = {}
@@ -26,7 +27,7 @@ return function(): string
 	local character = waitFor(function()
 		local c = Players.LocalPlayer.Character
 		return c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Head") and c
-	end, 10)
+	end, 30)
 	local aiRider = waitFor(function()
 		return workspace:FindFirstChild("AiRider")
 	end, 10)
@@ -58,7 +59,7 @@ return function(): string
 		check(rider.name .. " plays only the sit pose", sitting, #tracks .. " tracks")
 
 		local boxCFrame, boxSize = rider.car:GetBoundingBox()
-		local roof = rider.car:GetPivot():PointToObjectSpace(boxCFrame.Position + Vector3.yAxis * boxSize.Y / 2).Y
+		local roof = rider.car:GetPivot():PointToObjectSpace(boxCFrame * Vector3.new(0, boxSize.Y / 2, 0)).Y
 		local hips = inCar(rider, root)
 		local head = inCar(rider, rider.model.Head)
 		check(rider.name .. " sits over the car centre", math.abs(hips.X) < 3 and math.abs(hips.Z) < 3, hips)
@@ -76,7 +77,8 @@ return function(): string
 	end, 12)
 	check("ai car drives after the countdown", moved ~= nil)
 	check("rider stays in the seat while the car drives (drift < 0.3 stud)", moved ~= nil and moved.drift < 0.3, moved and moved.drift)
-	check("player avatar has not fallen off the map", character.HumanoidRootPart.Position.Y > 0, character.HumanoidRootPart.Position.Y)
+	local reach = (character.HumanoidRootPart.Position - riders[1].car:GetPivot().Position).Magnitude
+	check("player avatar rides with its car", reach < SEAT_REACH, string.format("%.1f studs from the car", reach))
 
 	table.insert(lines, 1, string.format("%d checks, %d failed", #lines, failed))
 	return table.concat(lines, "\n")

@@ -8,6 +8,7 @@ local Track = require(Shared.Track)
 local CarPhysics = require(Shared.CarPhysics)
 local AiDriver = require(Shared.AiDriver)
 local FrameClock = require(Shared.FrameClock)
+local Course = require(Shared.Course)
 local World = require(script.Parent.World)
 local Rider = require(script.Parent.Rider)
 
@@ -43,7 +44,9 @@ type Car = {
 	place: number?,
 }
 
-local track = Track.build(Track.SPEC)
+local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0 }
+
+local track = Track.build(Course)
 World.build(track)
 
 local carTemplate = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Car") :: Model
@@ -65,13 +68,7 @@ local function spawnCar(name: string, lateral: number, drive): Car
 	local boxCFrame, boxSize = model:GetBoundingBox()
 	model.Parent = workspace
 
-	local start, tangent = Track.sample(track, -START_BEHIND)
-	local state = {
-		position = start + tangent:Cross(Vector3.yAxis) * lateral,
-		heading = math.atan2(tangent.X, tangent.Z),
-		speed = 0,
-		distance = -START_BEHIND,
-	}
+	local state = { distance = -START_BEHIND, lateral = lateral, yaw = 0, speed = 0 }
 	return {
 		name = name,
 		drive = drive,
@@ -106,7 +103,6 @@ task.spawn(function()
 	Rider.seat(aiRider, ai.model)
 end)
 
-local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0 }
 local frameClock = FrameClock.new(SIM_STEP)
 
 local function setPhase(phase: Phase)
@@ -185,18 +181,26 @@ local bigLabel = makeLabel(hud, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.28
 
 local camera = workspace.CurrentCamera
 
-local function renderPose(car: Car): (Vector3, number)
-	return CarPhysics.pose(car.previous, car.state, FrameClock.alpha(frameClock))
+local function shown(car: Car): CarPhysics.CarState
+	return CarPhysics.blend(car.previous, car.state, FrameClock.alpha(frameClock))
 end
 
+-- The eye sits above the road behind the car rather than in the car's frame, because the corkscrew rolls
+-- the road so fast that a point fixed behind the car would end up under the road.
 local function cameraGoal(car: Car): CFrame
-	local position, heading = renderPose(car)
-	local forward = CarPhysics.forward(heading)
-	return CFrame.lookAt(position - forward * CAMERA_BACK + Vector3.yAxis * CAMERA_UP, position + forward * CAMERA_LOOK_AHEAD)
+	local state = shown(car)
+	local pose = CarPhysics.pose(state, track)
+	local behind = Track.place(
+		track,
+		state.distance - CAMERA_BACK * math.cos(state.yaw),
+		state.lateral - CAMERA_BACK * math.sin(state.yaw),
+		state.yaw
+	)
+	return CFrame.lookAt(behind * Vector3.new(0, CAMERA_UP, 0), pose * Vector3.new(0, 0, -CAMERA_LOOK_AHEAD), pose.UpVector)
 end
 
 camera.CFrame = cameraGoal(player)
-print("[Race] state Countdown")
+setPhase("Countdown")
 
 RunService.RenderStepped:Connect(function(dt)
 	local now = os.clock()
@@ -213,9 +217,8 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 
 	for _, car in cars do
-		local position, heading = renderPose(car)
 		local lift = car.pivotHeight + HOVER + math.sin(now * BOB_SPEED + car.bobPhase) * BOB_HEIGHT
-		car.model:PivotTo(CFrame.lookAt(position, position + CarPhysics.forward(heading)) + Vector3.yAxis * lift)
+		car.model:PivotTo(CarPhysics.pose(shown(car), track) * CFrame.new(0, lift, 0))
 	end
 	-- Spawning the avatar resets CameraType to Custom, and the default camera then fights this one.
 	camera.CameraType = Enum.CameraType.Scriptable

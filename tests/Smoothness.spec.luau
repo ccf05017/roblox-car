@@ -5,10 +5,12 @@ local Track = require(Shared.Track)
 local CarPhysics = require(Shared.CarPhysics)
 local AiDriver = require(Shared.AiDriver)
 local FrameClock = require(Shared.FrameClock)
+local Course = require(Shared.Course)
 
 local STEP = 1 / 60
 local WARMUP_FRAMES = 240
 local SPEED_TOLERANCE = 0.1
+local LAP_FRAMES = 80 * 60
 
 type Case = { name: string, dts: { number } }
 
@@ -39,13 +41,11 @@ local CASES: { Case } = {
 	{ name = "144 Hz", dts = repeated(1 / 144, 600) },
 	{ name = "30 Hz", dts = repeated(1 / 30, 300) },
 	{ name = "one 250 ms hitch", dts = withHitch() },
+	{ name = "60 Hz for a whole lap", dts = repeated(STEP, LAP_FRAMES) },
 }
 
-local track = Track.build(Track.SPEC)
-
-local function race(dts: { number }): (number, number, number, number)
-	local start, tangent = Track.sample(track, 0)
-	local state: CarPhysics.CarState = { position = start, heading = math.atan2(tangent.X, tangent.Z), speed = 0, distance = 0 }
+local function race(track: Track.Track, dts: { number }): (number, number, number, number)
+	local state: CarPhysics.CarState = { distance = 0, lateral = 0, yaw = 0, speed = 0 }
 	local previous = state
 	local clock = FrameClock.new(STEP)
 	local steps = 0
@@ -55,7 +55,7 @@ local function race(dts: { number }): (number, number, number, number)
 			state = CarPhysics.step(state, AiDriver.input(state, track), STEP, track)
 			steps += 1
 		end
-		return (CarPhysics.pose(previous, state, FrameClock.alpha(clock)))
+		return CarPhysics.pose(CarPhysics.blend(previous, state, FrameClock.alpha(clock)), track).Position
 	end
 
 	for _ = 1, WARMUP_FRAMES do
@@ -66,7 +66,7 @@ local function race(dts: { number }): (number, number, number, number)
 	local off, worst, elapsed = 0, 0, 0
 	for _, dt in dts do
 		local position = frame(dt)
-		local shown = Vector3.new(position.X - last.X, 0, position.Z - last.Z).Magnitude / dt
+		local shown = (position - last).Magnitude / dt
 		local miss = math.abs(shown - state.speed) / state.speed
 		worst = math.max(worst, miss)
 		if miss > SPEED_TOLERANCE then
@@ -89,8 +89,9 @@ return function(): string
 		table.insert(lines, (if ok then "PASS " else "FAIL ") .. name .. (if ok or detail == nil then "" else " :: " .. tostring(detail)))
 	end
 
+	local track = Track.build(Course)
 	for _, case in CASES do
-		local off, worst, simulated, elapsed = race(case.dts)
+		local off, worst, simulated, elapsed = race(track, case.dts)
 		check(
 			"car moves on screen at its real speed every frame at " .. case.name,
 			off == 0,
