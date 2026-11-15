@@ -10,18 +10,17 @@ local TILE_GAP = 1
 local LANE_GAP = 0.6
 local LANES = 4
 local CRYSTAL = {
-	Color3.fromRGB(40, 90, 170),
-	Color3.fromRGB(80, 55, 165),
-	Color3.fromRGB(30, 115, 150),
-	Color3.fromRGB(105, 60, 160),
+	Color3.fromRGB(70, 105, 165),
+	Color3.fromRGB(100, 85, 160),
+	Color3.fromRGB(65, 125, 150),
+	Color3.fromRGB(120, 90, 155),
 }
-local SEAM = Color3.fromRGB(255, 235, 170)
-local RAIL = Color3.fromRGB(255, 220, 120)
-local POST = Color3.fromRGB(255, 245, 210)
+local RAIL = Color3.fromRGB(135, 115, 80)
+local POST = Color3.fromRGB(150, 135, 110)
 local RAIL_HEIGHT = 2.2
 local POST_EVERY = 16
 local POST_WIDTH = 0.5
-local SHARDS = 160
+local SHARDS = 100
 local SHARD_SIDES = 6
 local SHARD_COLORS = { Color3.fromRGB(50, 140, 220), Color3.fromRGB(210, 80, 170), Color3.fromRGB(120, 90, 220) }
 local SHARD_TIP = Color3.fromRGB(190, 225, 255)
@@ -97,7 +96,7 @@ local function shards(track: Track.Track, rng: Random): { Scenery.Quad }
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
 		local at = frame * CFrame.new(side * rng:NextNumber(track.width, 160), rng:NextNumber(-90, 60), 0)
 		local pose = CFrame.new(at.Position) * CFrame.Angles(rng:NextNumber(0, 2 * math.pi), rng:NextNumber(0, 2 * math.pi), rng:NextNumber(0, 2 * math.pi))
-		local length = rng:NextNumber(8, 30)
+		local length = rng:NextNumber(6, 20)
 		local girth = length * rng:NextNumber(0.15, 0.25)
 		local color = SHARD_COLORS[rng:NextInteger(1, #SHARD_COLORS)]
 		local top, bottom = pose * Vector3.new(0, length / 2, 0), pose * Vector3.new(0, -length / 2, 0)
@@ -135,11 +134,10 @@ function World.build(track: Track.Track)
 	decor.Parent = folder
 
 	Scenery.night({
-		ambient = Color3.fromRGB(120, 110, 150),
+		ambient = Color3.fromRGB(175, 170, 200),
 		brightness = 1.8,
-		bloom = 1.2,
 		tint = Color3.fromRGB(250, 240, 255),
-		saturation = 0.15,
+		saturation = -0.1,
 	})
 
 	local half = track.width / 2
@@ -150,32 +148,24 @@ function World.build(track: Track.Track)
 		paint = function(s, x)
 			return tileColor(s, math.min(math.floor((x + half) / (2 * half) * LANES), LANES - 1))
 		end,
-	}), { name = "Tiles", material = Enum.Material.Neon, transparency = 0.3, essential = true })
+	}), { name = "Tiles", transparency = 0.1, essential = true })
 
-	Scenery.mesh(road, Scenery.join(
-		Scenery.sweep(track, {
-			strips = {
-				{ Vector2.new(-half, RAIL_HEIGHT - 0.4), Vector2.new(-half, RAIL_HEIGHT) },
-				{ Vector2.new(half, RAIL_HEIGHT - 0.4), Vector2.new(half, RAIL_HEIGHT) },
-				{ Vector2.new(-half, 0), Vector2.new(-half, 0.5) },
-				{ Vector2.new(half, 0), Vector2.new(half, 0.5) },
-			},
-			step = 6,
-			paint = Scenery.solid(RAIL),
-		}),
-		Scenery.sweep(track, {
-			strips = { { Vector2.new(-half, 0.04), Vector2.new(half, 0.04) } },
-			step = TILE,
-			gap = TILE - 0.35,
-			paint = Scenery.solid(SEAM),
-		}),
-		posts(track, half)
-	), { name = "Rails", material = Enum.Material.Neon })
+	Scenery.mesh(road, Scenery.sweep(track, {
+		strips = {
+			{ Vector2.new(-half, RAIL_HEIGHT - 0.4), Vector2.new(-half, RAIL_HEIGHT) },
+			{ Vector2.new(half, RAIL_HEIGHT - 0.4), Vector2.new(half, RAIL_HEIGHT) },
+			{ Vector2.new(-half, 0), Vector2.new(-half, 0.5) },
+			{ Vector2.new(half, 0), Vector2.new(half, 0.5) },
+		},
+		step = 6,
+		paint = Scenery.solid(RAIL),
+	}), { name = "Rails", material = Enum.Material.Neon })
+	Scenery.mesh(road, posts(track, half), { name = "Posts" })
 
 	local rng = Random.new(SEED)
-	Scenery.mesh(decor, planet(), { name = "Planet", material = Enum.Material.Neon })
-	Scenery.mesh(decor, ring(), { name = "Ring", material = Enum.Material.Neon, transparency = 0.55 })
-	Scenery.mesh(decor, shards(track, rng), { name = "Shards", material = Enum.Material.Neon, transparency = 0.3 })
+	Scenery.mesh(decor, planet(), { name = "Planet" })
+	Scenery.mesh(decor, ring(), { name = "Ring", transparency = 0.3 })
+	Scenery.mesh(decor, shards(track, rng), { name = "Shards", transparency = 0.3 })
 
 	Scenery.sky(decor, {
 		planets = {
@@ -192,7 +182,7 @@ function World.build(track: Track.Track)
 	}, rng)
 
 	local start = Track.frame(track, 0)
-	Scenery.part(folder, Enum.PartType.Block, Vector3.new(track.width, 0.2, 4), start * CFrame.new(0, 0.15, 0), START_LINE_COLOR, Enum.Material.Neon)
+	Scenery.part(folder, Vector3.new(track.width, 0.2, 4), start * CFrame.new(0, 0.15, 0), START_LINE_COLOR)
 
 	folder.Parent = workspace
 end

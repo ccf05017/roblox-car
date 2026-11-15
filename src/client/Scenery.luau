@@ -43,7 +43,6 @@ export type Sky = {
 export type Night = {
 	ambient: Color3,
 	brightness: number,
-	bloom: number,
 	tint: Color3,
 	saturation: number,
 }
@@ -65,13 +64,12 @@ local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
 
 local Scenery = {}
 
-function Scenery.part(parent: Instance, shape: Enum.PartType, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?, transparency: number?): Part
+function Scenery.part(parent: Instance, size: Vector3, cframe: CFrame, color: Color3, transparency: number?): Part
 	local part = Instance.new("Part")
-	part.Shape = shape
 	part.Size = size
 	part.CFrame = cframe
 	part.Color = color
-	part.Material = material or Enum.Material.SmoothPlastic
+	part.Material = Enum.Material.SmoothPlastic
 	part.Transparency = transparency or 0
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
@@ -184,7 +182,7 @@ function Scenery.facing(at: Vector3, toward: Vector3, size: number, color: Color
 end
 
 function Scenery.billboard(parent: Instance, at: Vector3, size: number, image: string, color: Color3, transparency: number): Part
-	local anchor = Scenery.part(parent, Enum.PartType.Block, Vector3.one, CFrame.new(at), color, nil, 1)
+	local anchor = Scenery.part(parent, Vector3.one, CFrame.new(at), color, 1)
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromScale(size, size)
 	gui.LightInfluence = 0
@@ -262,14 +260,6 @@ function Scenery.sphere(center: Vector3, radius: number, paint: (normal: Vector3
 	return quads
 end
 
-function Scenery.join(...: { Quad }): { Quad }
-	local all = {}
-	for _, quads in { ... } do
-		table.move(quads, 1, #quads, #all + 1, all)
-	end
-	return all
-end
-
 function Scenery.sweep(track: Track.Track, sweep: Sweep): { Quad }
 	local step = sweep.step or track.spacing
 	local gap = sweep.gap or 0
@@ -310,16 +300,9 @@ function Scenery.night(night: Night)
 	sky.CelestialBodiesShown = false
 	sky.Parent = Lighting
 
-	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = night.bloom
-	bloom.Size = 40
-	bloom.Threshold = 0.85
-	bloom.Parent = Lighting
-
 	local grade = Instance.new("ColorCorrectionEffect")
 	grade.TintColor = night.tint
 	grade.Saturation = night.saturation
-	grade.Contrast = 0.1
 	grade.Parent = Lighting
 end
 

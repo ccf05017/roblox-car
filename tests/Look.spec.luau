@@ -9,6 +9,7 @@ local ROAD_PROBE_EVERY = 10
 local ROAD_REACH = 1
 local GRID = 16
 local MAX_PARTS = 8000
+local MAX_BLOOM = 0.3
 
 local function insideBox(part: BasePart, point: Vector3, margin: number): boolean
 	local offset = part.CFrame:PointToObjectSpace(point)
@@ -87,18 +88,15 @@ return function(): string
 
 	local sky = Lighting:FindFirstChildOfClass("Sky")
 	check("night sky full of stars", sky ~= nil and sky.StarCount >= MIN_STARS and Lighting.ClockTime < 3, sky and string.format("%d stars at %.1f h", sky.StarCount, Lighting.ClockTime))
-	check("bloom makes the neon glow", Lighting:FindFirstChildOfClass("BloomEffect") ~= nil)
+	local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+	check("bloom stays at or under " .. MAX_BLOOM, bloom == nil or bloom.Intensity <= MAX_BLOOM, bloom and bloom.Intensity)
 
 	local function cell(point: Vector3): string
 		return string.format("%d,%d,%d", point.X // GRID, point.Y // GRID, point.Z // GRID)
 	end
 	local blocks, triangles = {}, {}
-	local neon = 0
 	for _, part in world.Road:GetDescendants() do
 		if part:IsA("BasePart") then
-			if part.Material == Enum.Material.Neon then
-				neon += 1
-			end
 			local mesh = if part:IsA("MeshPart") then part.MeshContent.Object else nil
 			if mesh and mesh:IsA("EditableMesh") then
 				for _, face in mesh:GetFaces() do
@@ -115,7 +113,17 @@ return function(): string
 			end
 		end
 	end
-	check("road has glowing neon trim", neon > 0)
+	local glowing, railGlows = {}, false
+	for _, part in world:GetDescendants() do
+		if part:IsA("BasePart") and part.Material == Enum.Material.Neon and not part:IsDescendantOf(world.Decor.Sky) then
+			railGlows = railGlows or part.Name == "Rails"
+			if part.Name ~= "Rails" then
+				table.insert(glowing, part.Name)
+			end
+		end
+	end
+	check("rails keep a thin glow", railGlows)
+	check("road, planet and start line are lit, not glowing", #glowing == 0, table.concat(glowing, ", "))
 
 	local function covered(point: Vector3): boolean
 		for _, part in blocks do
