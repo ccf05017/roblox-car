@@ -22,7 +22,7 @@ AI(Claude Code)로 코드를 짜고, 차 모델은 VARCO 3D로 만들었습니�
 
 왼쪽 위에 몇 바퀴째인지, 오른쪽 위에 현재 등수가 나옵니다.
 3바퀴를 다 돌면 "1등!" 또는 "2등"이 뜹니다.
-아바타는 나오지 않고 카메라가 차를 따라갑니다.
+내 아바타는 하늘색 호버카 조종석에 앉아서 달립니다. 컴퓨터 차에는 주황 옷을 입은 아바타가 탑니다.
 
 ## 개발 환경
 
@@ -46,7 +46,7 @@ Rojo는 `src/`와 연결된 세 폴더만 덮어씁니다. Studio에서 직접 �
 
 ## 구조
 
-게임 전체가 플레이어 컴퓨터(클라이언트)에서 돕니다. 서버 스크립트는 없습니다.
+레이스는 플레이어 컴퓨터(클라이언트)에서 돕니다. 서버 스크립트는 아바타를 불러오는 일만 합니다.
 
 ```
 src/
@@ -56,9 +56,13 @@ src/
 │   └── AiDriver.luau       컴퓨터 차의 핸들과 가속 결정
 ├── client/                 (StarterPlayerScripts.Client)
 │   ├── World.luau          도로, 별, 행성, 하늘 만들기
+│   ├── Rider.luau          아바타를 차 조종석에 앉히기
 │   └── Race.client.luau    레이스 진행, 키보드 입력, 카메라, 화면 표시
-└── server/                 비어 있음
+└── server/                 (ServerScriptService.Server)
+    └── Avatars.server.luau 내 아바타와 컴퓨터 탑승자 만들기
+tests/                      (ReplicatedStorage.Tests) 플레이 중에 돌리는 시나리오 테스트
 tools/decimate_mesh.py      VARCO 메시를 Roblox에 맞게 줄이는 스크립트
+tools/studio_sync.luau      Rojo 없이 src/와 tests/를 Studio에 복사하는 스크립트
 assets/varco/               VARCO 원본 콘셉트 이미지와 정리한 차 메시
 ```
 
@@ -79,6 +83,20 @@ assets/varco/               VARCO 원본 콘셉트 이미지와 정리한 차 �
 
 플레이어 차와 컴퓨터 차는 같은 함수로 움직입니다. 입력을 키보드에서 받는지 `AiDriver`에서 받는지만 다릅니다.
 `AiDriver`는 속도에 비례해서 앞쪽 트랙 지점을 보고 그쪽으로 핸들을 꺾습니다. 코너에서는 가속을 줄입니다.
+
+### 아바타 탑승
+
+`Players.CharacterAutoLoads`는 `Place1.rbxl`에서 꺼져 있습니다. 그래서 `Avatars.server.luau`가 플레이어가 들어올 때 `LoadCharacter`로 아바타를 직접 만듭니다.
+같은 스크립트가 주황 옷을 입은 기본 아바타 `AiRider`를 `ReplicatedStorage`에 만들어 둡니다. `Race.client.luau`는 이것을 복제해서 컴퓨터 차에 태웁니다.
+
+`Rider.seat(아바타, 차)`는 다음을 합니다.
+
+1. 아바타의 `HumanoidRootPart`를 차 몸체에 `Weld`로 붙입니다. 위치는 조종석 높이(`COCKPIT`)라서 상체만 지붕 위로 나옵니다.
+2. 앉은 자세 애니메이션 하나만 재생합니다.
+3. 점프와 걷기를 끕니다.
+
+로블록스 기본 `Animate` 스크립트는 지웁니다. 이 스크립트는 차에 붙은 아바타를 떨어지는 중으로 보고 앉은 자세를 덮어씁니다.
+차는 고정된 채 `PivotTo`로 움직이고, 붙은 아바타는 같은 프레임에 함께 움직입니다.
 
 ### 레이스 진행
 
@@ -114,7 +132,27 @@ uv run --python 3.12 --with trimesh --with fast-simplification python tools/deci
 | 컴퓨터 차 속도 | `src/shared/AiDriver.luau` | `MAX_THROTTLE` (기본 0.88) |
 | 바퀴 수 | `src/client/Race.client.luau` | `LAPS` (기본 3) |
 
+## 테스트
+
+`tests/`의 시나리오 테스트는 Studio 플레이 중에 클라이언트에서 돌립니다. 각 파일은 `PASS`/`FAIL` 줄을 돌려주는 함수를 반환합니다.
+
+1. Rojo로 연결하거나 `tools/studio_sync.luau`로 코드를 Studio에 복사합니다.
+2. **Play**를 누릅니다.
+3. Studio MCP의 `execute_luau`(Client)나 명령 줄에서 다음을 실행합니다.
+
+```lua
+print(require(game.ReplicatedStorage.Tests["Riders.spec"])())
+```
+
+`tools/studio_sync.luau`는 Rojo 플러그인의 Connect 버튼을 누를 사람이 없을 때 씁니다. 저장소 루트에서 `python3 -m http.server 34877 --bind 127.0.0.1`을 실행한 다음, 스크립트를 Studio Edit 모드에서 실행합니다. `default.project.json`의 폴더를 Rojo와 같은 이름 규칙으로 복사하고, 파일이 없어진 스크립트는 지웁니다.
+
 ## 버전 기록
+
+### 0.2: 아바타 탑승
+
+- 내 아바타가 호버카 조종석에 앉아서 달립니다. 상체만 지붕 위로 보입니다.
+- 컴퓨터 차에도 주황 옷을 입은 아바타가 탑니다.
+- 탑승을 확인하는 시나리오 테스트 17개를 추가했습니다.
 
 ### 0.1: 달리는 MVP
 
