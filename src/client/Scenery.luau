@@ -21,7 +21,16 @@ export type Sweep = {
 	paint: (s: number, x: number) -> Color3,
 }
 
+export type Planet = {
+	direction: Vector3,
+	size: number,
+	light: Color3,
+	dark: Color3,
+	bands: number?,
+}
+
 export type Sky = {
+	planets: { Planet },
 	stars: { Color3 },
 	clouds: { Color3 },
 	bandTilt: number,
@@ -47,6 +56,10 @@ local FALLBACK_THICKNESS = 0.3
 local FALLBACK_OVERLAP = 0.4
 local WHITE = Color3.new(1, 1, 1)
 local SKY_RADIUS = 950
+local PLANET_DISTANCE = 820
+local SUN = Vector3.new(0.6, 0.5, -0.6).Unit
+local SPHERE_RINGS = 16
+local SPHERE_SEGMENTS = 32
 local BAND_SPREAD = 0.33
 local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
@@ -204,6 +217,15 @@ function Scenery.sky(decor: Instance, sky: Sky, rng: Random)
 		local size = SKY_RADIUS * rng:NextNumber(0.0012, 0.0035)
 		table.insert(stars, Scenery.facing(direction * SKY_RADIUS, Vector3.zero, size, sky.stars[rng:NextInteger(1, #sky.stars)]))
 	end
+	for _, planet in sky.planets do
+		local center = planet.direction.Unit * PLANET_DISTANCE
+		local stripes = planet.bands or 0
+		local sphere = Scenery.sphere(center, planet.size, function(normal)
+			local lit = planet.dark:Lerp(planet.light, math.clamp(normal:Dot(SUN) * 0.8 + 0.4, 0, 1))
+			return if stripes > 0 and math.floor((normal.Y + 1) * stripes) % 2 == 1 then lit:Lerp(planet.dark, 0.25) else lit
+		end)
+		table.move(sphere, 1, #sphere, #stars + 1, stars)
+	end
 	Scenery.mesh(model, stars, { name = "Stars", material = Enum.Material.Neon })
 
 	for i = 1, sky.cloudCount do
@@ -221,6 +243,26 @@ function Scenery.sky(decor: Instance, sky: Sky, rng: Random)
 	RunService.RenderStepped:Connect(function()
 		model:PivotTo(CFrame.new(workspace.CurrentCamera.CFrame.Position))
 	end)
+end
+
+function Scenery.sphere(center: Vector3, radius: number, paint: (normal: Vector3) -> Color3): { Quad }
+	local function normal(ring: number, segment: number): Vector3
+		local lat = math.pi * (ring / SPHERE_RINGS - 0.5)
+		local lon = 2 * math.pi * segment / SPHERE_SEGMENTS
+		return Vector3.new(math.cos(lat) * math.cos(lon), math.sin(lat), math.cos(lat) * math.sin(lon))
+	end
+	local quads = {}
+	for ring = 0, SPHERE_RINGS - 1 do
+		for segment = 0, SPHERE_SEGMENTS - 1 do
+			local corners, colors = {}, {}
+			for k, at in { { ring, segment }, { ring, segment + 1 }, { ring + 1, segment + 1 }, { ring + 1, segment } } do
+				local n = normal(at[1], at[2])
+				corners[k], colors[k] = center + n * radius, paint(n)
+			end
+			table.insert(quads, { corners = corners, colors = colors })
+		end
+	end
+	return quads
 end
 
 function Scenery.beacons(track: Track.Track, parent: Instance, spacing: number, colors: { Color3 })
