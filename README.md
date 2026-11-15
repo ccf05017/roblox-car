@@ -108,6 +108,8 @@ Countdown (3초) → Racing → Finished
 ```
 
 시뮬레이션은 화면 프레임과 상관없이 1/60초 단위로 돌아서, 컴퓨터 성능이 달라도 같은 결과가 나옵니다.
+화면 프레임 하나에 시뮬레이션이 0번이나 2번 돌 때도 있습니다. 그래서 차와 카메라는 마지막 두 시뮬레이션 상태 사이를 이어 그린 위치에 놓습니다. 이렇게 하지 않으면 차가 한 프레임 멈췄다가 다음 프레임에 두 칸 튀어서 화면이 덜컥거립니다.
+카메라는 `Race.client.luau`만 움직입니다. 아바타가 생기면 로블록스가 카메라를 기본 카메라(`Custom`)로 되돌리기 때문에, 매 프레임 `Scriptable`로 다시 맞춥니다.
 누적 거리가 트랙 길이를 넘을 때마다 한 바퀴로 셉니다. 플레이어가 3바퀴를 돌면 결과를 띄웁니다.
 
 ### 차 모델 (VARCO)
@@ -151,6 +153,7 @@ PNG를 다시 만들었으면 Roblox에 다시 올리고 `Race.client.luau`의 `
 | --- | --- |
 | `tests/Riders.spec.luau` | 두 아바타의 앉은 자세, 달리는 동안 자리 유지 |
 | `tests/Look.spec.luau` | 조명 값, 도로 색, 외곽선(`Highlight`) 없음, 두 차의 텍스처와 두 텍스처가 서로 다른지 |
+| `tests/Motion.spec.luau` | 카메라를 레이스 스크립트만 움직이는지, 카메라가 차 뒤 28 스터드 이상에 있는지, 컴퓨터 차가 프레임마다 고른 속도로 움직이는지 |
 
 1. Rojo로 연결하거나 `tools/studio_sync.luau`로 코드를 Studio에 복사합니다.
 2. **Play**를 누릅니다.
@@ -159,11 +162,18 @@ PNG를 다시 만들었으면 Roblox에 다시 올리고 `Race.client.luau`의 `
 ```lua
 print(require(game.ReplicatedStorage.Tests["Riders.spec"])())
 print(require(game.ReplicatedStorage.Tests["Look.spec"])())
+print(require(game.ReplicatedStorage.Tests["Motion.spec"])())
 ```
 
 `tools/studio_sync.luau`는 Rojo 플러그인의 Connect 버튼을 누를 사람이 없을 때 씁니다. 저장소 루트에서 `python3 -m http.server 34877 --bind 127.0.0.1`을 실행한 다음, 스크립트를 Studio Edit 모드에서 실행합니다. `default.project.json`의 폴더를 Rojo와 같은 이름 규칙으로 복사하고, 파일이 없어진 스크립트는 지웁니다.
 
 ## 버전 기록
+
+### 0.3.1: 화면 떨림 수정
+
+- 달리는 동안 화면이 앞뒤로 덜컥거리던 문제를 고쳤습니다. 4초 직선 주행에서 화면 속 차가 앞뒤로 방향을 바꾼 횟수가 63번에서 0번으로 줄었습니다(Studio 60fps에서 측정).
+- 카메라가 설계대로 차 뒤 28 스터드에서 따라옵니다. 전에는 기본 카메라가 끼어들어서 13~16 스터드 거리에 붙어 있었습니다.
+- 움직임을 확인하는 시나리오 테스트 4개(`tests/Motion.spec.luau`)를 추가했습니다.
 
 ### 0.3: 텍스처 차와 조명
 
