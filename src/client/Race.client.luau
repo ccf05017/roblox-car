@@ -8,6 +8,7 @@ local Track = require(Shared.Track)
 local CarPhysics = require(Shared.CarPhysics)
 local AiDriver = require(Shared.AiDriver)
 local World = require(script.Parent.World)
+local Rider = require(script.Parent.Rider)
 
 local LAPS = 3
 local COUNTDOWN_SECONDS = 3
@@ -90,6 +91,20 @@ end
 local player = spawnCar("player", PLAYER_COLOR, -GRID_OFFSET, keyboardInput)
 local ai = spawnCar("ai", AI_COLOR, GRID_OFFSET, AiDriver.input)
 local cars = { player, ai }
+
+local function seatAvatar(character: Model)
+	Rider.seat(character, player.model)
+end
+Players.LocalPlayer.CharacterAdded:Connect(seatAvatar)
+if Players.LocalPlayer.Character then
+	task.spawn(seatAvatar, Players.LocalPlayer.Character)
+end
+
+task.spawn(function()
+	local aiRider = ReplicatedStorage:WaitForChild("AiRider"):Clone()
+	aiRider.Parent = workspace
+	Rider.seat(aiRider, ai.model)
+end)
 
 local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0, unsimulated = 0 }
 
