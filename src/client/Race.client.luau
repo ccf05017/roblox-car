@@ -178,7 +178,6 @@ local placeLabel = makeLabel(hud, Vector2.new(1, 0), UDim2.new(1, -24, 0, 16), U
 local bigLabel = makeLabel(hud, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.28), UDim2.fromScale(0.5, 0.25))
 
 local camera = workspace.CurrentCamera
-camera.CameraType = Enum.CameraType.Scriptable
 
 local function cameraGoal(car: Car): CFrame
 	local forward = CarPhysics.forward(car.state.heading)
@@ -210,6 +209,8 @@ RunService.RenderStepped:Connect(function(dt)
 		local lift = car.pivotHeight + HOVER + math.sin(now * BOB_SPEED + car.bobPhase) * BOB_HEIGHT
 		car.model:PivotTo(CFrame.lookAt(state.position, state.position + CarPhysics.forward(state.heading)) + Vector3.yAxis * lift)
 	end
+	-- Spawning the avatar resets CameraType to Custom, and the default camera then fights this one.
+	camera.CameraType = Enum.CameraType.Scriptable
 	camera.CFrame = camera.CFrame:Lerp(cameraGoal(player), 1 - math.exp(-CAMERA_SMOOTHING * dt))
 
 	local text = bigText(now)
