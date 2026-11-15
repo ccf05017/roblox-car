@@ -69,4 +69,8 @@ function CarPhysics.step(state: CarState, input: Input, dt: number, track: Track
 	return { position = position, heading = heading, speed = speed, distance = state.distance + ds }
 end
 
+function CarPhysics.pose(previous: CarState, state: CarState, alpha: number): (Vector3, number)
+	return previous.position:Lerp(state.position, alpha), previous.heading + (state.heading - previous.heading) * alpha
+end
+
 return CarPhysics

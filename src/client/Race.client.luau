@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Track = require(Shared.Track)
 local CarPhysics = require(Shared.CarPhysics)
 local AiDriver = require(Shared.AiDriver)
+local FrameClock = require(Shared.FrameClock)
 local World = require(script.Parent.World)
 local Rider = require(script.Parent.Rider)
 
@@ -105,7 +106,8 @@ task.spawn(function()
 	Rider.seat(aiRider, ai.model)
 end)
 
-local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0, unsimulated = 0 }
+local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0 }
+local frameClock = FrameClock.new(SIM_STEP)
 
 local function setPhase(phase: Phase)
 	race.phase = phase
@@ -184,9 +186,7 @@ local bigLabel = makeLabel(hud, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.28
 local camera = workspace.CurrentCamera
 
 local function renderPose(car: Car): (Vector3, number)
-	local alpha = race.unsimulated / SIM_STEP
-	local from, to = car.previous, car.state
-	return from.position:Lerp(to.position, alpha), from.heading + (to.heading - from.heading) * alpha
+	return CarPhysics.pose(car.previous, car.state, FrameClock.alpha(frameClock))
 end
 
 local function cameraGoal(car: Car): CFrame
@@ -204,9 +204,7 @@ RunService.RenderStepped:Connect(function(dt)
 		setPhase("Racing")
 	end
 	if race.phase ~= "Countdown" then
-		race.unsimulated += dt
-		while race.unsimulated >= SIM_STEP do
-			race.unsimulated -= SIM_STEP
+		for _ = 1, FrameClock.advance(frameClock, dt) do
 			race.clock += SIM_STEP
 			for _, car in cars do
 				updateCar(car)
