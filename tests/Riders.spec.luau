@@ -24,14 +24,10 @@ return function(): string
 		return nil
 	end
 
-	local course = waitFor(function()
-		return workspace:GetAttribute("Course")
-	end, 30)
-	check("course chosen", course ~= nil)
 	local character = waitFor(function()
 		local c = Players.LocalPlayer.Character
 		return c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Head") and c
-	end, 10)
+	end, 30)
 	local aiRider = waitFor(function()
 		return workspace:FindFirstChild("AiRider")
 	end, 10)

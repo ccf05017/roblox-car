@@ -8,10 +8,9 @@ local Track = require(Shared.Track)
 local CarPhysics = require(Shared.CarPhysics)
 local AiDriver = require(Shared.AiDriver)
 local FrameClock = require(Shared.FrameClock)
-local Courses = require(Shared.Courses)
+local Course = require(Shared.Course)
 local World = require(script.Parent.World)
 local Rider = require(script.Parent.Rider)
-local Picker = require(script.Parent.Picker)
 
 local LAPS = 3
 local COUNTDOWN_SECONDS = 3
@@ -30,7 +29,7 @@ local PLACE_NAMES = { "1st", "2nd" }
 local AI_TEXTURE = "rbxassetid://86832693528956"
 local IDLE: CarPhysics.Input = { throttle = 0, steer = 0 }
 
-type Phase = "Choose" | "Countdown" | "Racing" | "Finished"
+type Phase = "Countdown" | "Racing" | "Finished"
 
 type Car = {
 	name: string,
@@ -45,25 +44,10 @@ type Car = {
 	place: number?,
 }
 
-local race = { phase = "Choose" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0 }
+local race = { phase = "Countdown" :: Phase, phaseStartedAt = os.clock(), finishers = 0, clock = 0 }
 
--- Until the car exists there is no floor, and with CharacterAutoLoads off a fallen avatar never comes back.
-local function holdAvatar(character: Model)
-	local root = character:WaitForChild("HumanoidRootPart") :: BasePart
-	if race.phase == "Choose" then
-		root.Anchored = true
-	end
-end
-Players.LocalPlayer.CharacterAdded:Connect(holdAvatar)
-if Players.LocalPlayer.Character then
-	task.spawn(holdAvatar, Players.LocalPlayer.Character)
-end
-
-print("[Race] state Choose")
-local course = Picker.choose(Courses)
-local track = Track.build(course.spec)
-World.build(track, course.id)
-workspace:SetAttribute("Course", course.id)
+local track = Track.build(Course)
+World.build(track)
 
 local carTemplate = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Car") :: Model
 

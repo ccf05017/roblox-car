@@ -2,7 +2,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Track = require(ReplicatedStorage.Shared.Track)
-local Courses = require(ReplicatedStorage.Shared.Courses)
+local Course = require(ReplicatedStorage.Shared.Course)
 
 local MIN_STARS = 3000
 local ROAD_PROBE_EVERY = 10
@@ -69,23 +69,9 @@ return function(): string
 		return nil
 	end
 
-	local chosen = waitFor(function()
-		return workspace:GetAttribute("Course")
-	end, 30)
-	local course = nil
-	for _, candidate in Courses do
-		if candidate.id == chosen then
-			course = candidate
-		end
-	end
-	check("a course from Courses is chosen", course ~= nil, chosen)
-	if not course then
-		return table.concat(lines, "\n")
-	end
-
 	local world = waitFor(function()
 		return workspace:FindFirstChild("World")
-	end, 10)
+	end, 30)
 	local cars = {}
 	for _, name in { "player", "ai" } do
 		local car = waitFor(function()
@@ -94,7 +80,7 @@ return function(): string
 		check(name .. " car spawned", car ~= nil)
 		table.insert(cars, car)
 	end
-	check("world built for " .. course.id, world ~= nil and world:GetAttribute("Course") == course.id, world and world:GetAttribute("Course"))
+	check("world built", world ~= nil)
 	if not world then
 		return table.concat(lines, "\n")
 	end
@@ -151,7 +137,7 @@ return function(): string
 		return false
 	end
 
-	local track = Track.build(course.spec)
+	local track = Track.build(Course)
 	local probes, missing, firstMissing = 0, 0, nil
 	for s = 0, track.length - 1, ROAD_PROBE_EVERY do
 		probes += 1

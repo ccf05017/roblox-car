@@ -19,8 +19,8 @@ return function(): string
 	local deadline = os.clock() + 30
 	repeat
 		task.wait(0.1)
-	until (workspace:GetAttribute("Course") and Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) or os.clock() > deadline
-	check("course chosen", workspace:GetAttribute("Course") ~= nil)
+	until (workspace:FindFirstChild("player") and Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) or os.clock() > deadline
+	check("player car spawned", workspace:FindFirstChild("player") ~= nil)
 	check("player avatar spawned", Players.LocalPlayer.Character ~= nil)
 	task.wait(1)
 

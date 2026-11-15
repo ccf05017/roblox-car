@@ -5,7 +5,7 @@ local Track = require(Shared.Track)
 local CarPhysics = require(Shared.CarPhysics)
 local AiDriver = require(Shared.AiDriver)
 local FrameClock = require(Shared.FrameClock)
-local Courses = require(Shared.Courses)
+local Course = require(Shared.Course)
 
 local STEP = 1 / 60
 local WARMUP_FRAMES = 240
@@ -89,21 +89,19 @@ return function(): string
 		table.insert(lines, (if ok then "PASS " else "FAIL ") .. name .. (if ok or detail == nil then "" else " :: " .. tostring(detail)))
 	end
 
-	for _, course in Courses do
-		local track = Track.build(course.spec)
-		for _, case in CASES do
-			local off, worst, simulated, elapsed = race(track, case.dts)
-			check(
-				course.id .. " car moves on screen at its real speed every frame at " .. case.name,
-				off == 0,
-				string.format("%d of %d frames off by over %d%%, worst %.0f%%", off, #case.dts, SPEED_TOLERANCE * 100, worst * 100)
-			)
-			check(
-				course.id .. " simulation keeps pace with elapsed time at " .. case.name,
-				math.abs(simulated - elapsed) < 1e-6,
-				string.format("%.6f s simulated for %.6f s elapsed", simulated, elapsed)
-			)
-		end
+	local track = Track.build(Course)
+	for _, case in CASES do
+		local off, worst, simulated, elapsed = race(track, case.dts)
+		check(
+			"car moves on screen at its real speed every frame at " .. case.name,
+			off == 0,
+			string.format("%d of %d frames off by over %d%%, worst %.0f%%", off, #case.dts, SPEED_TOLERANCE * 100, worst * 100)
+		)
+		check(
+			"simulation keeps pace with elapsed time at " .. case.name,
+			math.abs(simulated - elapsed) < 1e-6,
+			string.format("%.6f s simulated for %.6f s elapsed", simulated, elapsed)
+		)
 	end
 
 	local clock = FrameClock.new(STEP)

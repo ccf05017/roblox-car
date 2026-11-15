@@ -26,7 +26,6 @@ export type Planet = {
 	size: number,
 	light: Color3,
 	dark: Color3,
-	bands: number?,
 }
 
 export type Sky = {
@@ -219,10 +218,8 @@ function Scenery.sky(decor: Instance, sky: Sky, rng: Random)
 	end
 	for _, planet in sky.planets do
 		local center = planet.direction.Unit * PLANET_DISTANCE
-		local stripes = planet.bands or 0
 		local sphere = Scenery.sphere(center, planet.size, function(normal)
-			local lit = planet.dark:Lerp(planet.light, math.clamp(normal:Dot(SUN) * 0.8 + 0.4, 0, 1))
-			return if stripes > 0 and math.floor((normal.Y + 1) * stripes) % 2 == 1 then lit:Lerp(planet.dark, 0.25) else lit
+			return planet.dark:Lerp(planet.light, math.clamp(normal:Dot(SUN) * 0.8 + 0.4, 0, 1))
 		end)
 		table.move(sphere, 1, #sphere, #stars + 1, stars)
 	end
@@ -263,17 +260,6 @@ function Scenery.sphere(center: Vector3, radius: number, paint: (normal: Vector3
 		end
 	end
 	return quads
-end
-
-function Scenery.beacons(track: Track.Track, parent: Instance, spacing: number, colors: { Color3 })
-	local offset = track.width / 2 + 5
-	for k = 0, math.floor(track.length / spacing) - 1 do
-		local frame = Track.frame(track, k * spacing)
-		local color = colors[k % #colors + 1]
-		for _, side in { -1, 1 } do
-			Scenery.part(parent, Enum.PartType.Ball, Vector3.one * 1.8, frame * CFrame.new(side * offset, 2.5, 0), color, Enum.Material.Neon)
-		end
-	end
 end
 
 function Scenery.join(...: { Quad }): { Quad }

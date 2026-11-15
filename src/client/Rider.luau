@@ -20,7 +20,6 @@ function Rider.seat(character: Model, car: Model)
 	silenceDefaultAnimate(character, animator)
 
 	local body = car.PrimaryPart :: BasePart
-	root.Anchored = false
 	local weld = Instance.new("Weld")
 	weld.Part0 = body
 	weld.Part1 = root
