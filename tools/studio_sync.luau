@@ -1,8 +1,5 @@
--- Rojo-less one-shot sync for agents driving Studio through MCP, where nobody can press the Rojo plugin's Connect button.
--- Serve the repo with `python3 -m http.server 34877 --bind 127.0.0.1`, then run this file in Studio's Edit DataModel.
--- Mirrors each `$path` folder in default.project.json using Rojo's file-name rules, and removes scripts whose file is gone.
 local Http = game:GetService("HttpService")
-local BASE = "http://127.0.0.1:34877/"
+local PYTHON_HTTP_SERVER = "http://127.0.0.1:34877/"
 
 local SUFFIXES = {
 	{ suffix = ".server.luau", class = "Script" },
@@ -21,10 +18,17 @@ end
 
 local log = {}
 
+local function listFiles(path: string): { string }
+	local files = {}
+	for file in string.gmatch(Http:GetAsync(PYTHON_HTTP_SERVER .. path .. "/"), 'href="([^"/]+)"') do
+		table.insert(files, file)
+	end
+	return files
+end
+
 local function syncFolder(target: Instance, path: string)
-	local listing = Http:GetAsync(BASE .. path .. "/")
 	local wanted = {}
-	for file in string.gmatch(listing, 'href="([^"/]+)"') do
+	for _, file in listFiles(path) do
 		local name, class = classify(file)
 		if name then
 			wanted[name] = true
@@ -35,7 +39,7 @@ local function syncFolder(target: Instance, path: string)
 			end
 			local script = existing or Instance.new(class :: string)
 			script.Name = name
-			script.Source = Http:GetAsync(BASE .. path .. "/" .. file)
+			script.Source = Http:GetAsync(PYTHON_HTTP_SERVER .. path .. "/" .. file)
 			script.Parent = target
 			table.insert(log, "sync " .. path .. "/" .. file)
 		end
@@ -65,5 +69,5 @@ local function walk(node: { [string]: any }, instance: Instance)
 	end
 end
 
-walk(Http:JSONDecode(Http:GetAsync(BASE .. "default.project.json")).tree, game)
+walk(Http:JSONDecode(Http:GetAsync(PYTHON_HTTP_SERVER .. "default.project.json")).tree, game)
 return table.concat(log, "\n")

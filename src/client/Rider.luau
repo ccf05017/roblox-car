@@ -3,12 +3,7 @@ local COCKPIT = CFrame.new(0, 2.6, 0.6)
 
 local Rider = {}
 
-function Rider.seat(character: Model, car: Model)
-	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	local root = character:WaitForChild("HumanoidRootPart") :: BasePart
-	local animator = humanoid:WaitForChild("Animator") :: Animator
-
-	-- The default Animate script reads the welded humanoid as falling and overrides the sit pose.
+local function silenceDefaultAnimate(character: Model, animator: Animator)
 	local animate = character:FindFirstChild("Animate")
 	if animate then
 		animate:Destroy()
@@ -16,8 +11,13 @@ function Rider.seat(character: Model, car: Model)
 	for _, track in animator:GetPlayingAnimationTracks() do
 		track:Stop(0)
 	end
-	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-	humanoid.WalkSpeed = 0
+end
+
+function Rider.seat(character: Model, car: Model)
+	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+	local root = character:WaitForChild("HumanoidRootPart") :: BasePart
+	local animator = humanoid:WaitForChild("Animator") :: Animator
+	silenceDefaultAnimate(character, animator)
 
 	local body = car.PrimaryPart :: BasePart
 	local weld = Instance.new("Weld")

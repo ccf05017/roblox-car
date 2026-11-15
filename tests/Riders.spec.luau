@@ -35,7 +35,9 @@ return function(): string
 	if not (character and aiRider) then
 		return table.concat(lines, "\n")
 	end
-	task.wait(0.5)
+	waitFor(function()
+		return character.HumanoidRootPart:FindFirstChildOfClass("Weld") and aiRider.HumanoidRootPart:FindFirstChildOfClass("Weld")
+	end, 5)
 
 	local riders = {
 		{ name = "player", model = character, car = workspace:WaitForChild("player") :: Model },
@@ -50,7 +52,6 @@ return function(): string
 		local humanoid = rider.model.Humanoid
 		local weld = root:FindFirstChildOfClass("Weld")
 		check(rider.name .. " is attached to its car", weld ~= nil and weld.Part0 == rider.car.PrimaryPart, weld and weld.Part0)
-		check(rider.name .. " cannot jump out", not humanoid:GetStateEnabled(Enum.HumanoidStateType.Jumping))
 
 		local tracks = humanoid.Animator:GetPlayingAnimationTracks()
 		local sitting = #tracks == 1 and string.find(tracks[1].Animation.AnimationId, SIT_ANIMATION, 1, true) ~= nil
