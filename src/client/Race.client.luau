@@ -24,6 +24,7 @@ local CAMERA_UP = 12
 local CAMERA_LOOK_AHEAD = 25
 local CAMERA_SMOOTHING = 6
 local PLACE_NAMES = { "1st", "2nd" }
+local AI_TEXTURE = "rbxassetid://86832693528956"
 local IDLE: CarPhysics.Input = { throttle = 0, steer = 0 }
 
 type Phase = "Countdown" | "Racing" | "Finished"
@@ -83,6 +84,8 @@ end
 
 local player = spawnCar("player", -GRID_OFFSET, keyboardInput)
 local ai = spawnCar("ai", GRID_OFFSET, AiDriver.input)
+local aiBody = ai.model.PrimaryPart :: MeshPart
+aiBody.TextureID = AI_TEXTURE
 local cars = { player, ai }
 
 local function seatAvatar(character: Model)

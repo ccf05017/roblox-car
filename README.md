@@ -63,6 +63,7 @@ src/
     └── Avatars.server.luau 내 아바타와 컴퓨터 탑승자 만들기
 tests/                      (ReplicatedStorage.Tests) 플레이 중에 돌리는 시나리오 테스트
 tools/decimate_mesh.py      VARCO 메시를 텍스처째 Roblox에 맞게 줄이는 스크립트
+tools/recolor_texture.py    컴퓨터 차 텍스처의 몸체를 주황색으로 다시 칠하는 스크립트
 tools/studio_sync.luau      Rojo 없이 src/와 tests/를 Studio에 복사하는 스크립트
 assets/varco/               VARCO 원본 콘셉트 이미지와 정리한 차 메시
 ```
@@ -116,13 +117,21 @@ Countdown (3초) → Racing → Finished
 3. 칠한 이미지로 Generate3D를 텍스처 옵션을 켜고 돌렸습니다. 무료 등급에서는 면 50만 개, 텍스처 4096 크기로 고정됩니다.
 4. `tools/decimate_mesh.py`로 면 9000개, 텍스처 1024 크기로 줄였습니다. UV를 그대로 두기 때문에 텍스처가 벗겨지지 않습니다. 줄이기 전에 이음새 꼭짓점을 붙여서 모델에 금이 가지 않게 했습니다.
 5. Studio **File → Import**로 `assets/varco/car.glb`를 가져와 `ReplicatedStorage.Assets.Car`에 넣었습니다. 모델은 텍스처를 입은 MeshPart `Body` 하나입니다.
-6. 게임이 시작되면 이 모델을 두 번 복제합니다. 색을 따로 칠하지 않으므로 지금은 플레이어 차와 컴퓨터 차가 똑같이 생겼습니다. 이 점은 알려진 한계입니다.
+6. 게임이 시작되면 이 모델을 두 번 복제합니다. 컴퓨터 차는 몸체를 주황색으로 다시 칠한 텍스처를 쓰고, 모양은 플레이어 차와 같습니다. 이 텍스처는 `tools/recolor_texture.py`로 만든 `assets/varco/car-texture-ai.png`를 Roblox에 올린 것이고, `Race.client.luau`의 `AI_TEXTURE`가 컴퓨터 차에 입힙니다.
 
 메시를 다시 줄이려면 다음 명령을 실행합니다.
 
 ```sh
 uv run --python 3.12 --with trimesh --with pymeshlab --with pillow --with scipy --with networkx python tools/decimate_mesh.py IN.glb OUT.glb --faces 9000 --texture 1024
 ```
+
+컴퓨터 차 텍스처를 다시 만들려면 다음 명령을 실행합니다.
+
+```sh
+uv run --python 3.12 --with trimesh --with pillow --with numpy --with scipy --with networkx python tools/recolor_texture.py assets/varco/car.glb assets/varco/car-texture-ai.png
+```
+
+PNG를 다시 만들었으면 Roblox에 다시 올리고 `Race.client.luau`의 `AI_TEXTURE`를 새 애셋 id로 바꿉니다.
 
 ### 숫자 조절
 
@@ -141,7 +150,7 @@ uv run --python 3.12 --with trimesh --with pymeshlab --with pillow --with scipy 
 | 파일 | 확인하는 것 |
 | --- | --- |
 | `tests/Riders.spec.luau` | 두 아바타의 앉은 자세, 달리는 동안 자리 유지 |
-| `tests/Look.spec.luau` | 조명 값, 도로 색, 외곽선(`Highlight`) 없음, 두 차의 텍스처 |
+| `tests/Look.spec.luau` | 조명 값, 도로 색, 외곽선(`Highlight`) 없음, 두 차의 텍스처와 두 텍스처가 서로 다른지 |
 
 1. Rojo로 연결하거나 `tools/studio_sync.luau`로 코드를 Studio에 복사합니다.
 2. **Play**를 누릅니다.
@@ -162,11 +171,8 @@ print(require(game.ReplicatedStorage.Tests["Look.spec"])())
 - 차 모델을 VARCO에서 텍스처까지 입혀 다시 만들었습니다. 하늘색 몸체에 노란 줄무늬, 숫자 1, 주황 지느러미가 그려져 있습니다.
 - 도로를 어두운 보라색으로 바꿨습니다. 하늘색 차와 도로의 밝기 대비가 1.29:1에서 3.14:1로 커졌습니다.
 - `tools/decimate_mesh.py`가 메시를 줄일 때 텍스처를 지우지 않습니다. 전에는 UV와 텍스처를 지워서 차가 하얀 단색이 되었습니다.
-- 화면 모습을 확인하는 시나리오 테스트 12개(`tests/Look.spec.luau`)를 추가했습니다.
-
-알려진 한계는 다음과 같습니다.
-
-- 플레이어 차와 컴퓨터 차가 똑같이 생겼습니다.
+- 컴퓨터 차는 몸체가 주황색입니다. 모양은 플레이어 차와 같습니다.
+- 화면 모습을 확인하는 시나리오 테스트 13개(`tests/Look.spec.luau`)를 추가했습니다.
 
 ### 0.2: 아바타 탑승
 
