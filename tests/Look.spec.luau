@@ -10,6 +10,7 @@ local ROAD_REACH = 1
 local GRID = 16
 local MAX_PARTS = 8000
 local MAX_BLOOM = 0.3
+local MAX_GLOW_COLOR = 0.85
 
 local function insideBox(part: BasePart, point: Vector3, margin: number): boolean
 	local offset = part.CFrame:PointToObjectSpace(point)
@@ -113,17 +114,40 @@ return function(): string
 			end
 		end
 	end
-	local glowing, railGlows = {}, false
+	local glows, dim = {}, {}
+	local brightest, brightestName = 0, nil
+	local function shine(color: Color3, name: string)
+		local value = math.max(color.R, color.G, color.B)
+		if value > brightest then
+			brightest, brightestName = value, name
+		end
+	end
 	for _, part in world:GetDescendants() do
-		if part:IsA("BasePart") and part.Material == Enum.Material.Neon and not part:IsDescendantOf(world.Decor.Sky) then
-			railGlows = railGlows or part.Name == "Rails"
-			if part.Name ~= "Rails" then
-				table.insert(glowing, part.Name)
+		if part:IsA("BasePart") and not part:IsDescendantOf(world.Decor.Sky) then
+			local neon = part.Material == Enum.Material.Neon
+			glows[part.Name] = neon and glows[part.Name] ~= false
+			if not neon then
+				continue
+			end
+			local mesh = if part:IsA("MeshPart") then part.MeshContent.Object else nil
+			if mesh and mesh:IsA("EditableMesh") then
+				for _, face in mesh:GetFaces() do
+					for _, id in mesh:GetFaceColors(face) do
+						shine(mesh:GetColor(id), part.Name)
+					end
+				end
+			else
+				shine(part.Color, part.Name)
 			end
 		end
 	end
-	check("rails keep a thin glow", railGlows)
-	check("road, planet and start line are lit, not glowing", #glowing == 0, table.concat(glowing, ", "))
+	for _, name in { "Tiles", "Rails", "Planet", "Ring" } do
+		if not glows[name] then
+			table.insert(dim, name)
+		end
+	end
+	check("road tiles, rails, planet and ring glow", #dim == 0, "not glowing: " .. table.concat(dim, ", "))
+	check("nothing glows white-hot (brightest glow colour at or under " .. MAX_GLOW_COLOR .. ")", brightest <= MAX_GLOW_COLOR, string.format("%.2f on %s", brightest, tostring(brightestName)))
 
 	local function covered(point: Vector3): boolean
 		for _, part in blocks do

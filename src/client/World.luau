@@ -10,13 +10,14 @@ local TILE_GAP = 1
 local LANE_GAP = 0.6
 local LANES = 4
 local CRYSTAL = {
-	Color3.fromRGB(70, 105, 165),
-	Color3.fromRGB(100, 85, 160),
-	Color3.fromRGB(65, 125, 150),
-	Color3.fromRGB(120, 90, 155),
+	Color3.fromRGB(79, 107, 155),
+	Color3.fromRGB(103, 91, 151),
+	Color3.fromRGB(75, 123, 143),
+	Color3.fromRGB(120, 96, 148),
 }
+-- Neon shines as bright as its colour, so this dims the road's own light without changing its hues.
+local ROAD_GLOW = 0.8
 local RAIL = Color3.fromRGB(135, 115, 80)
-local POST = Color3.fromRGB(150, 135, 110)
 local RAIL_HEIGHT = 2.2
 local POST_EVERY = 16
 local POST_WIDTH = 0.5
@@ -46,7 +47,7 @@ local START_LINE_COLOR = Color3.new(1, 1, 1)
 
 local function tileColor(s: number, lane: number): Color3
 	local rng = Random.new(math.floor(s / TILE) * LANES + lane)
-	return CRYSTAL[rng:NextInteger(1, #CRYSTAL)]:Lerp(Color3.new(1, 1, 1), rng:NextNumber(0, 0.15))
+	return CRYSTAL[rng:NextInteger(1, #CRYSTAL)]:Lerp(Color3.new(1, 1, 1), rng:NextNumber(0, 0.15)):Lerp(Color3.new(), 1 - ROAD_GLOW)
 end
 
 local function lanes(half: number): { { Vector2 } }
@@ -67,7 +68,7 @@ local function posts(track: Track.Track, half: number): { Scenery.Quad }
 			local base = frame * CFrame.new(side * half, 0, 0)
 			local a, b = base * Vector3.new(0, 0, -POST_WIDTH), base * Vector3.new(0, 0, POST_WIDTH)
 			local up = frame.UpVector * RAIL_HEIGHT
-			table.insert(quads, { corners = { a, b, b + up, a + up }, colors = { POST, POST, POST, POST } })
+			table.insert(quads, { corners = { a, b, b + up, a + up }, colors = { RAIL, RAIL, RAIL, RAIL } })
 		end
 	end
 	return quads
@@ -137,7 +138,7 @@ function World.build(track: Track.Track)
 		ambient = Color3.fromRGB(175, 170, 200),
 		brightness = 1.8,
 		tint = Color3.fromRGB(250, 240, 255),
-		saturation = -0.1,
+		saturation = 0.1,
 	})
 
 	local half = track.width / 2
@@ -148,7 +149,7 @@ function World.build(track: Track.Track)
 		paint = function(s, x)
 			return tileColor(s, math.min(math.floor((x + half) / (2 * half) * LANES), LANES - 1))
 		end,
-	}), { name = "Tiles", transparency = 0.1, essential = true })
+	}), { name = "Tiles", material = Enum.Material.Neon, transparency = 0.3, essential = true })
 
 	Scenery.mesh(road, Scenery.sweep(track, {
 		strips = {
@@ -160,11 +161,11 @@ function World.build(track: Track.Track)
 		step = 6,
 		paint = Scenery.solid(RAIL),
 	}), { name = "Rails", material = Enum.Material.Neon })
-	Scenery.mesh(road, posts(track, half), { name = "Posts" })
+	Scenery.mesh(road, posts(track, half), { name = "Posts", material = Enum.Material.Neon })
 
 	local rng = Random.new(SEED)
-	Scenery.mesh(decor, planet(), { name = "Planet" })
-	Scenery.mesh(decor, ring(), { name = "Ring", transparency = 0.3 })
+	Scenery.mesh(decor, planet(), { name = "Planet", material = Enum.Material.Neon })
+	Scenery.mesh(decor, ring(), { name = "Ring", material = Enum.Material.Neon, transparency = 0.55 })
 	Scenery.mesh(decor, shards(track, rng), { name = "Shards", transparency = 0.3 })
 
 	Scenery.sky(decor, {
