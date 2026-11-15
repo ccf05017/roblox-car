@@ -4,7 +4,8 @@
 "아바타톤 로블록스편" 멘토 지원용 데모로 만들었습니다. 지원 조건과 행사 내용은 [`docs/context.md`](docs/context.md)에 있습니다.
 
 AI(Claude Code)로 코드를 짜고, 차 모델은 VARCO 3D로 만들었습니다.
-일부러 초등학생 그림 같은 싸구려 느낌을 냈습니다. 납작한 도형, 단색, 노란 별 하나를 여러 번 찍은 배경입니다.
+조명을 켠 우주에서 VARCO가 텍스처까지 그린 호버카가 어두운 보라색 도로 위를 달립니다.
+별과 행성은 여전히 단순한 도형입니다. 노란 별 하나를 여러 번 찍고, 행성은 단색 공으로 그렸습니다.
 
 ## 플레이하기
 
@@ -55,13 +56,13 @@ src/
 │   ├── CarPhysics.luau     차 한 대를 1/60초만큼 움직이는 순수 함수
 │   └── AiDriver.luau       컴퓨터 차의 핸들과 가속 결정
 ├── client/                 (StarterPlayerScripts.Client)
-│   ├── World.luau          도로, 별, 행성, 하늘 만들기
+│   ├── World.luau          조명, 도로, 별, 행성, 하늘 만들기
 │   ├── Rider.luau          아바타를 차 조종석에 앉히기
 │   └── Race.client.luau    레이스 진행, 키보드 입력, 카메라, 화면 표시
 └── server/                 (ServerScriptService.Server)
     └── Avatars.server.luau 내 아바타와 컴퓨터 탑승자 만들기
 tests/                      (ReplicatedStorage.Tests) 플레이 중에 돌리는 시나리오 테스트
-tools/decimate_mesh.py      VARCO 메시를 Roblox에 맞게 줄이는 스크립트
+tools/decimate_mesh.py      VARCO 메시를 텍스처째 Roblox에 맞게 줄이는 스크립트
 tools/studio_sync.luau      Rojo 없이 src/와 tests/를 Studio에 복사하는 스크립트
 assets/varco/               VARCO 원본 콘셉트 이미지와 정리한 차 메시
 ```
@@ -110,15 +111,17 @@ Countdown (3초) → Racing → Finished
 
 ### 차 모델 (VARCO)
 
-1. VARCO 3D에서 텍스트 → 이미지 → 3D 모델 순서로 하얀 UFO 모양 호버카를 만들었습니다.
-2. 결과 메시가 너무 커서(면 50만 개) `tools/decimate_mesh.py`로 면 9000개로 줄였습니다. 줄이기 전에 이음새 꼭짓점을 붙여서 모델에 금이 가지 않게 했습니다.
-3. Studio **File → Import**로 `assets/varco/car.glb`를 가져와 `ReplicatedStorage.Assets.Car`에 넣었습니다.
-4. 게임이 시작되면 이 모델을 두 번 복제해서 플레이어 차는 하늘색, 컴퓨터 차는 주황색으로 칠합니다.
+1. VARCO 3D에서 텍스트로 하얀 UFO 모양 호버카 이미지를 만들었습니다(`assets/varco/car-concept.png`).
+2. EditImage로 이 이미지를 다시 칠했습니다. 몸체는 하늘색, 줄무늬는 노란색, 지느러미는 주황색이고 숫자 1을 넣었습니다(`assets/varco/car-concept-color.png`).
+3. 칠한 이미지로 Generate3D를 텍스처 옵션을 켜고 돌렸습니다. 무료 등급에서는 면 50만 개, 텍스처 4096 크기로 고정됩니다.
+4. `tools/decimate_mesh.py`로 면 9000개, 텍스처 1024 크기로 줄였습니다. UV를 그대로 두기 때문에 텍스처가 벗겨지지 않습니다. 줄이기 전에 이음새 꼭짓점을 붙여서 모델에 금이 가지 않게 했습니다.
+5. Studio **File → Import**로 `assets/varco/car.glb`를 가져와 `ReplicatedStorage.Assets.Car`에 넣었습니다. 모델은 텍스처를 입은 MeshPart `Body` 하나입니다.
+6. 게임이 시작되면 이 모델을 두 번 복제합니다. 색을 따로 칠하지 않으므로 지금은 플레이어 차와 컴퓨터 차가 똑같이 생겼습니다. 이 점은 알려진 한계입니다.
 
 메시를 다시 줄이려면 다음 명령을 실행합니다.
 
 ```sh
-uv run --python 3.12 --with trimesh --with fast-simplification python tools/decimate_mesh.py IN.glb OUT.glb --faces 9000
+uv run --python 3.12 --with trimesh --with pymeshlab --with pillow --with scipy --with networkx python tools/decimate_mesh.py IN.glb OUT.glb --faces 9000 --texture 1024
 ```
 
 ### 숫자 조절
@@ -135,17 +138,35 @@ uv run --python 3.12 --with trimesh --with fast-simplification python tools/deci
 
 `tests/`의 시나리오 테스트는 Studio 플레이 중에 클라이언트에서 돌립니다. 각 파일은 `PASS`/`FAIL` 줄을 돌려주는 함수를 반환합니다.
 
+| 파일 | 확인하는 것 |
+| --- | --- |
+| `tests/Riders.spec.luau` | 두 아바타의 앉은 자세, 달리는 동안 자리 유지 |
+| `tests/Look.spec.luau` | 조명 값, 도로 색, 외곽선(`Highlight`) 없음, 두 차의 텍스처 |
+
 1. Rojo로 연결하거나 `tools/studio_sync.luau`로 코드를 Studio에 복사합니다.
 2. **Play**를 누릅니다.
 3. Studio MCP의 `execute_luau`(Client)나 명령 줄에서 다음을 실행합니다.
 
 ```lua
 print(require(game.ReplicatedStorage.Tests["Riders.spec"])())
+print(require(game.ReplicatedStorage.Tests["Look.spec"])())
 ```
 
 `tools/studio_sync.luau`는 Rojo 플러그인의 Connect 버튼을 누를 사람이 없을 때 씁니다. 저장소 루트에서 `python3 -m http.server 34877 --bind 127.0.0.1`을 실행한 다음, 스크립트를 Studio Edit 모드에서 실행합니다. `default.project.json`의 폴더를 Rojo와 같은 이름 규칙으로 복사하고, 파일이 없어진 스크립트는 지웁니다.
 
 ## 버전 기록
+
+### 0.3: 텍스처 차와 조명
+
+- 조명을 켰습니다. 차와 도로에 빛과 그림자가 생깁니다.
+- 차 모델을 VARCO에서 텍스처까지 입혀 다시 만들었습니다. 하늘색 몸체에 노란 줄무늬, 숫자 1, 주황 지느러미가 그려져 있습니다.
+- 도로를 어두운 보라색으로 바꿨습니다. 하늘색 차와 도로의 밝기 대비가 1.29:1에서 3.14:1로 커졌습니다.
+- `tools/decimate_mesh.py`가 메시를 줄일 때 텍스처를 지우지 않습니다. 전에는 UV와 텍스처를 지워서 차가 하얀 단색이 되었습니다.
+- 화면 모습을 확인하는 시나리오 테스트 12개(`tests/Look.spec.luau`)를 추가했습니다.
+
+알려진 한계는 다음과 같습니다.
+
+- 플레이어 차와 컴퓨터 차가 똑같이 생겼습니다.
 
 ### 0.2: 아바타 탑승
 
