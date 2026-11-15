@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 
 local SIT_ANIMATION = "2506281703"
+local SEAT_REACH = 6
 
 return function(): string
 	local lines = {}
@@ -23,6 +24,10 @@ return function(): string
 		return nil
 	end
 
+	local course = waitFor(function()
+		return workspace:GetAttribute("Course")
+	end, 30)
+	check("course chosen", course ~= nil)
 	local character = waitFor(function()
 		local c = Players.LocalPlayer.Character
 		return c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChild("Head") and c
@@ -76,7 +81,8 @@ return function(): string
 	end, 12)
 	check("ai car drives after the countdown", moved ~= nil)
 	check("rider stays in the seat while the car drives (drift < 0.3 stud)", moved ~= nil and moved.drift < 0.3, moved and moved.drift)
-	check("player avatar has not fallen off the map", character.HumanoidRootPart.Position.Y > 0, character.HumanoidRootPart.Position.Y)
+	local reach = (character.HumanoidRootPart.Position - riders[1].car:GetPivot().Position).Magnitude
+	check("player avatar rides with its car", reach < SEAT_REACH, string.format("%.1f studs from the car", reach))
 
 	table.insert(lines, 1, string.format("%d checks, %d failed", #lines, failed))
 	return table.concat(lines, "\n")

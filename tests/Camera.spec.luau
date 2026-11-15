@@ -14,10 +14,11 @@ return function(): string
 		table.insert(lines, (if ok then "PASS " else "FAIL ") .. name .. (if ok or detail == nil then "" else " :: " .. tostring(detail)))
 	end
 
-	local deadline = os.clock() + 10
+	local deadline = os.clock() + 30
 	repeat
 		task.wait(0.1)
-	until (Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) or os.clock() > deadline
+	until (workspace:GetAttribute("Course") and Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) or os.clock() > deadline
+	check("course chosen", workspace:GetAttribute("Course") ~= nil)
 	check("player avatar spawned", Players.LocalPlayer.Character ~= nil)
 	task.wait(1)
 
@@ -33,8 +34,8 @@ return function(): string
 		writes += thisFrame
 		maxWrites = math.max(maxWrites, thisFrame)
 		thisFrame = 0
-		local offset = car:GetPivot().Position - camera.CFrame.Position
-		minGap = math.min(minGap, Vector3.new(offset.X, 0, offset.Z).Magnitude)
+		local pivot = car:GetPivot()
+		minGap = math.min(minGap, (camera.CFrame.Position - pivot.Position):Dot(-pivot.LookVector))
 	end)
 	task.wait(SAMPLE_SECONDS)
 	changed:Disconnect()
@@ -48,7 +49,7 @@ return function(): string
 	check(
 		"camera stays at least CAMERA_BACK behind the player car",
 		minGap >= CAMERA_BACK - 0.5,
-		string.format("closest horizontal gap %.1f studs", minGap)
+		string.format("closest gap behind the car %.1f studs", minGap)
 	)
 
 	table.insert(lines, 1, string.format("%d checks, %d failed", #lines, failed))
